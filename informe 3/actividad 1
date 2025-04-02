@@ -1,0 +1,46 @@
+#include <iostream>
+#include <string>
+
+// Clase Usuario, solo maneja la información del usuario
+class Usuario {
+private:
+    std::string nombre;
+    std::string email;
+
+public:
+    Usuario(std::string n, std::string e) : nombre(n), email(e) {}
+
+    std::string getNombre() const { return nombre; }
+    std::string getEmail() const { return email; }
+};
+
+// Clase RepositorioUsuarios, maneja la persistencia del usuario
+class RepositorioUsuarios {
+public:
+    void guardarEnBaseDeDatos(const Usuario& usuario) {
+        std::cout << "Guardando usuario " << usuario.getNombre() << " en la base de datos." << std::endl;
+    }
+};
+
+// Clase ServicioEmail, maneja el envío de emails
+class ServicioEmail {
+public:
+    void enviarEmailBienvenida(const Usuario& usuario) {
+        std::cout << "Enviando email de bienvenida a " << usuario.getEmail() << std::endl;
+    }
+};
+
+int main() {
+    // Creación de un usuario
+    Usuario usuario("Juan", "juan@example.com");
+
+    // Instanciamos los servicios
+    RepositorioUsuarios repositorio;
+    ServicioEmail servicioEmail;
+
+    // Usamos los servicios para manejar el usuario
+    repositorio.guardarEnBaseDeDatos(usuario);
+    servicioEmail.enviarEmailBienvenida(usuario);
+
+    return 0;
+}
