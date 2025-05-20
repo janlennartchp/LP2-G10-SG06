@@ -1,0 +1,128 @@
+#include <iostream>
+#include <cmath>
+#include <memory>
+using namespace std;
+
+// Clase abstracta
+class Figura {
+public:
+    virtual double calcularArea() const = 0;
+    virtual ~Figura() {}
+};
+
+// Clase Círculo
+class Circulo : public Figura {
+private:
+    double radio;
+public:
+    Circulo(double r) : radio(r) {}
+    double calcularArea() const override {
+        return M_PI * radio * radio;
+    }
+};
+
+// Clase Rectángulo
+class Rectangulo : public Figura {
+private:
+    double base, altura;
+public:
+    Rectangulo(double b, double h) : base(b), altura(h) {}
+    double calcularArea() const override {
+        return base * altura;
+    }
+};
+
+// Clase Triángulo
+class Triangulo : public Figura {
+private:
+    double base, altura;
+public:
+    Triangulo(double b, double h) : base(b), altura(h) {}
+    double calcularArea() const override {
+        return (base * altura) / 2;
+    }
+};
+
+// Clase Cuadrado
+class Cuadrado : public Figura {
+private:
+    double lado;
+public:
+    Cuadrado(double l) : lado(l) {}
+    double calcularArea() const override {
+        return lado * lado;
+    }
+};
+
+// Clase Pentágono
+class Pentagono : public Figura {
+private:
+    double lado, apotema;
+public:
+    Pentagono(double l, double a) : lado(l), apotema(a) {}
+    double calcularArea() const override {
+        return (5 * lado * apotema) / 2;
+    }
+};
+
+void menuFiguras() {
+    cout << "\nSeleccione una figura geométrica:\n";
+    cout << "1. Círculo\n";
+    cout << "2. Rectángulo\n";
+    cout << "3. Triángulo\n";
+    cout << "4. Cuadrado\n";
+    cout << "5. Pentágono\n";
+    cout << "Opción: ";
+}
+
+int main() {
+    int opcion;
+    unique_ptr<Figura> figura;
+
+    menuFiguras();
+    cin >> opcion;
+
+    switch (opcion) {
+        case 1: {
+            double radio;
+            cout << "Ingrese el radio: ";
+            cin >> radio;
+            figura = unique_ptr<Figura>(new Circulo(radio));
+            break;
+        }
+        case 2: {
+            double base, altura;
+            cout << "Ingrese base y altura: ";
+            cin >> base >> altura;
+            figura = unique_ptr<Figura>(new Rectangulo(base, altura));
+            break;
+        }
+        case 3: {
+            double base, altura;
+            cout << "Ingrese base y altura: ";
+            cin >> base >> altura;
+            figura = unique_ptr<Figura>(new Triangulo(base, altura));
+            break;
+        }
+        case 4: {
+            double lado;
+            cout << "Ingrese el lado del cuadrado: ";
+            cin >> lado;
+            figura = unique_ptr<Figura>(new Cuadrado(lado));
+            break;
+        }
+        case 5: {
+            double lado, apotema;
+            cout << "Ingrese el lado y la apotema del pentágono: ";
+            cin >> lado >> apotema;
+            figura = unique_ptr<Figura>(new Pentagono(lado, apotema));
+            break;
+        }
+        default:
+            cout << "Opción inválida.\n";
+            return 1;
+    }
+
+    cout << "Área calculada: " << figura->calcularArea() << " unidades cuadradas.\n";
+    return 0;
+}
