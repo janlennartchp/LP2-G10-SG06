@@ -1,0 +1,51 @@
+#include <iostream>
+using namespace std;
+
+// Clase base
+class Vehiculo {
+public:
+    virtual void acelerar() const {
+        cout << "Acelerando el vehículo" << endl;
+    }
+
+    virtual ~Vehiculo() {}
+};
+
+// Clase derivada: Coche
+class Coche : public Vehiculo {
+public:
+    void acelerar() const override {
+        cout << "Acelerando el coche" << endl;
+    }
+
+    void encenderLuces() const {
+        cout << "Luces del coche encendidas" << endl;
+    }
+};
+
+// Clase derivada: Motocicleta
+class Motocicleta : public Vehiculo {
+public:
+    void acelerar() const override {
+        cout << "Acelerando la motocicleta" << endl;
+    }
+};
+
+int main() {
+    // Instancia de la clase Coche
+    Coche miCoche;
+    cout << "Coche: ";
+    miCoche.acelerar();
+    miCoche.encenderLuces();
+
+    cout << endl;
+
+    // Instancia de la clase Motocicleta
+    Motocicleta miMoto;
+    cout << "Motocicleta: ";
+    miMoto.acelerar();
+
+    // No se llama a encenderLuces() en Motocicleta porque no existe
+
+    return 0;
+}
