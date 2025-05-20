@@ -1,0 +1,90 @@
+#include <iostream>
+#include <cmath>
+#include <memory>
+using namespace std;
+
+// Clase completamente abstracta
+class Forma {
+public:
+    virtual double calcularPerimetro() const = 0;
+    virtual ~Forma() {}
+};
+
+// Círculo
+class Circulo : public Forma {
+private:
+    double radio;
+public:
+    Circulo(double r) : radio(r) {}
+    double calcularPerimetro() const override {
+        return 2 * M_PI * radio;
+    }
+};
+
+// Rectángulo
+class Rectangulo : public Forma {
+private:
+    double base, altura;
+public:
+    Rectangulo(double b, double h) : base(b), altura(h) {}
+    double calcularPerimetro() const override {
+        return 2 * (base + altura);
+    }
+};
+
+// Triángulo
+class Triangulo : public Forma {
+private:
+    double lado1, lado2, lado3;
+public:
+    Triangulo(double a, double b, double c) : lado1(a), lado2(b), lado3(c) {}
+    double calcularPerimetro() const override {
+        return lado1 + lado2 + lado3;
+    }
+};
+
+void menuFormas() {
+    cout << "\nSeleccione una forma geométrica:\n";
+    cout << "1. Círculo\n";
+    cout << "2. Rectángulo\n";
+    cout << "3. Triángulo\n";
+    cout << "Opción: ";
+}
+
+int main() {
+    int opcion;
+    unique_ptr<Forma> forma;
+
+    menuFormas();
+    cin >> opcion;
+
+    switch (opcion) {
+        case 1: {
+            double radio;
+            cout << "Ingrese el radio del círculo: ";
+            cin >> radio;
+            forma = unique_ptr<Forma>(new Circulo(radio));
+            break;
+        }
+        case 2: {
+            double base, altura;
+            cout << "Ingrese base y altura: ";
+            cin >> base >> altura;
+            forma = unique_ptr<Forma>(new Rectangulo(base, altura));
+            break;
+        }
+        case 3: {
+            double lado1, lado2, lado3;
+            cout << "Ingrese los tres lados del triángulo: ";
+            cin >> lado1 >> lado2 >> lado3;
+            forma = unique_ptr<Forma>(new Triangulo(lado1, lado2, lado3));
+            break;
+        }
+        default:
+            cout << "Opción inválida.\n";
+            return 1;
+    }
+
+    cout << "Perímetro calculado: " << forma->calcularPerimetro() << " unidades.\n";
+    return 0;
+}
