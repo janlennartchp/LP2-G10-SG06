@@ -1,0 +1,37 @@
+#include <iostream>
+using namespace std;
+
+// Interfaz Reproductor
+class Reproductor {
+public:
+    virtual void reproducir() = 0;
+    virtual void pausar() = 0;
+    virtual void detener() = 0;
+    virtual ~Reproductor() {}
+};
+
+// Clase que implementa la interfaz
+class ReproductorMP3 : public Reproductor {
+public:
+    void reproducir() override {
+        cout << "Reproduciendo archivo MP3..." << endl;
+    }
+    void pausar() override {
+        cout << "Reproducción pausada." << endl;
+    }
+    void detener() override {
+        cout << "Reproducción detenida." << endl;
+    }
+};
+
+// Prueba
+void pruebaReproductor() {
+    ReproductorMP3 mp3;
+    mp3.reproducir();
+    mp3.pausar();
+    mp3.detener();
+}
+int main() {
+    pruebaReproductor();
+    return 0;
+}
