@@ -1,0 +1,58 @@
+#include <iostream>
+#include <memory>
+#include <vector>
+using namespace std;
+
+// Clase base
+class Animal {
+public:
+    // Método virtual para ser redefinido por las clases derivadas
+    virtual void hacerSonido() const {
+        cout << "El animal hace un sonido genérico." << endl;
+    }
+
+    // Destructor virtual
+    virtual ~Animal() {}
+};
+
+// Clase derivada: Perro
+class Perro : public Animal {
+public:
+    void hacerSonido() const override {
+        cout << "El perro dice: ¡Guau guau!" << endl;
+    }
+};
+
+// Clase derivada: Gato
+class Gato : public Animal {
+public:
+    void hacerSonido() const override {
+        cout << "El gato dice: ¡Miau miau!" << endl;
+    }
+};
+
+// Nueva clase derivada: Vaca
+class Vaca : public Animal {
+public:
+    void hacerSonido() const override {
+        cout << "La vaca dice: ¡Muuu!" << endl;
+    }
+};
+
+int main() {
+    // Vector de punteros únicos a Animal para aplicar polimorfismo
+    vector<unique_ptr<Animal>> animales;
+
+    // Se crean instancias de los animales
+    animales.push_back(unique_ptr<Animal>(new Perro()));
+    animales.push_back(unique_ptr<Animal>(new Gato()));
+    animales.push_back(unique_ptr<Animal>(new Vaca()));
+
+    // Se llama al método hacerSonido() usando polimorfismo
+    for (size_t i = 0; i < animales.size(); ++i) {
+        cout << "Animal #" << i + 1 << ": ";
+        animales[i]->hacerSonido();
+    }
+
+    return 0;
+}
