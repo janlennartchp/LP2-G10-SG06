@@ -1,0 +1,71 @@
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// Clase abstracta Figura
+class Figura {
+public:
+    virtual void dibujar() const = 0;
+    virtual double calcularArea() const = 0;
+    virtual ~Figura() {}
+};
+
+// Clase derivada Círculo
+class Circulo : public Figura {
+private:
+    double radio;
+public:
+    Circulo(double r) : radio(r) {}
+    void dibujar() const override {
+        cout << "Dibujando un Círculo con radio " << radio << endl;
+    }
+    double calcularArea() const override {
+        return 3.14159 * radio * radio;
+    }
+};
+
+// Clase derivada Rectángulo
+class Rectangulo : public Figura {
+private:
+    double ancho, alto;
+public:
+    Rectangulo(double a, double h) : ancho(a), alto(h) {}
+    void dibujar() const override {
+        cout << "Dibujando un Rectángulo de " << ancho << " x " << alto << endl;
+    }
+    double calcularArea() const override {
+        return ancho * alto;
+    }
+};
+
+// Clase derivada Triángulo
+class Triangulo : public Figura {
+private:
+    double base, altura;
+public:
+    Triangulo(double b, double h) : base(b), altura(h) {}
+    void dibujar() const override {
+        cout << "Dibujando un Triángulo de base " << base << " y altura " << altura << endl;
+    }
+    double calcularArea() const override {
+        return 0.5 * base * altura;
+    }
+};
+
+// Prueba de figuras
+void pruebaFiguras() {
+    Circulo c(5.0);
+    Rectangulo r(4.0, 3.0);
+    Triangulo t(6.0, 2.5);
+
+    Figura* figuras[] = { &c, &r, &t };
+
+    for (int i = 0; i < 3; ++i) {
+        figuras[i]->dibujar();
+        cout << "Área: " << figuras[i]->calcularArea() << " unidades cuadradas\n" << endl;
+    }
+}
+int main() {
+    pruebaFiguras();
+    return 0;
+}
