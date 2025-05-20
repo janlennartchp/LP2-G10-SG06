@@ -1,0 +1,48 @@
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// Clase base
+class Empleado {
+public:
+    virtual double calcularSalario() const = 0;
+    virtual ~Empleado() {}
+    };
+
+// Tiempo completo
+class EmpleadoTiempoCompleto : public Empleado {
+private:
+    double salarioMensual;
+public:
+    EmpleadoTiempoCompleto(double s) : salarioMensual(s) {}
+    double calcularSalario() const override {
+        return salarioMensual;
+        }
+    };
+
+// Medio tiempo
+class EmpleadoMedioTiempo : public Empleado {
+private:
+    double horasTrabajadas;
+    double tarifaPorHora;
+public:
+    EmpleadoMedioTiempo(double h, double t) : horasTrabajadas(h), tarifaPorHora(t) {}
+    double calcularSalario() const override {
+        return horasTrabajadas * tarifaPorHora;
+        }
+    };
+
+// Prueba
+void pruebaEmpleados() {
+    EmpleadoTiempoCompleto empFull(3000);
+    EmpleadoMedioTiempo empPart(80, 15);  // 80 horas, 15 soles/hora
+
+    cout << "Salario tiempo completo: " << empFull.calcularSalario() << endl;
+    cout << "Salario medio tiempo: " << empPart.calcularSalario() << endl;
+    };
+
+int main() {
+    pruebaEmpleados();
+
+    return 0;
+}
