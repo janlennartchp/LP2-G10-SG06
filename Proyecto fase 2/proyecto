@@ -1,0 +1,246 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <limits>
+using namespace std;
+
+class Usuario {
+protected:
+    string nombre;
+    string dni;
+    string celular;
+
+public:
+    Usuario(string nombre, string dni, string celular)
+        : nombre(nombre), dni(dni), celular(celular) {}
+    virtual void menu() = 0;
+    string getNombre() { return nombre; }
+};
+
+class Ingrediente {
+public:
+    string nombre;
+    double cantidad;
+    double minimo;
+    double precio;
+
+    Ingrediente(string nombre = "", double cantidad = 0, double minimo = 0, double precio = 0)
+        : nombre(nombre), cantidad(cantidad), minimo(minimo), precio(precio) {}
+};
+
+class Plato {
+public:
+    string nombre;
+    double precio;
+    map<string, double> ingredientes;
+    string categoria;
+
+    Plato(string nombre = "", double precio = 0.0, string categoria = "")
+        : nombre(nombre), precio(precio), categoria(categoria) {}
+
+    void agregarIngrediente(string nombre, double cantidad) {
+        ingredientes[nombre] = cantidad;
+    }
+};
+
+class Pedido {
+public:
+    string mozo;
+    string entrada;
+    string fondo;
+    string bebida;
+    string postre;
+    string tipo; // mesa o delivery
+};
+
+class Administrador : public Usuario {
+private:
+    map<string, Ingrediente> inventario;
+    vector<Plato> platos;
+    vector<Pedido> pedidos;
+
+public:
+    Administrador(string nombre, string dni, string celular)
+        : Usuario(nombre, dni, celular) {}
+
+    void agregarIngrediente(string nombre, double cantidad, double minimo, double precio) {
+        inventario[nombre] = Ingrediente(nombre, cantidad, minimo, precio);
+    }
+
+    void actualizarIngrediente(string nombre, double cantidad, double precio) {
+        if (inventario.count(nombre)) {
+            inventario[nombre].cantidad = cantidad;
+            inventario[nombre].precio = precio;
+        }
+    }
+
+    void agregarPlato(string nombre, double precio, string categoria, map<string, double> ingredientes) {
+        Plato nuevo(nombre, precio, categoria);
+        for (auto& par : ingredientes)
+            nuevo.agregarIngrediente(par.first, par.second);
+        platos.push_back(nuevo);
+    }
+
+    void agregarPedido(Pedido pedido) {
+        pedidos.push_back(pedido);
+    }
+
+    void reporteVentas() {
+        map<string, int> porPlato, porMozo, porTipo;
+        for (Pedido& p : pedidos) {
+            porPlato[p.entrada]++;
+            porPlato[p.fondo]++;
+            porPlato[p.bebida]++;
+            porPlato[p.postre]++;
+            porMozo[p.mozo]++;
+            porTipo[p.tipo]++;
+        }
+        cout << "\n--- Ventas Totales por Plato ---\n";
+        for (auto& p : porPlato) cout << p.first << ": " << p.second << endl;
+        cout << "\n--- Ventas por Mozo ---\n";
+        for (auto& m : porMozo) cout << m.first << ": " << m.second << endl;
+        cout << "\n--- Ventas por Tipo ---\n";
+        for (auto& t : porTipo) cout << t.first << ": " << t.second << endl;
+    }
+
+    void reporteStock() {
+        cout << "\n--- Stock Actual ---\n";
+        for (map<string, Ingrediente>::iterator it = inventario.begin(); it != inventario.end(); ++it)
+            cout << it->first << ": " << it->second.cantidad << endl;
+    }
+
+    void productosPorReponer() {
+        cout << "\n--- Productos por Reponer ---\n";
+        for (map<string, Ingrediente>::iterator it = inventario.begin(); it != inventario.end(); ++it)
+            if (it->second.cantidad < it->second.minimo)
+                cout << it->first << ": " << it->second.cantidad << " (mínimo: " << it->second.minimo << ")\n";
+    }
+
+    void platosDisponibles() {
+        cout << "\n--- Platos Disponibles según Stock ---\n";
+        for (Plato& p : platos) {
+            bool disponible = true;
+            for (map<string, double>::iterator it = p.ingredientes.begin(); it != p.ingredientes.end(); ++it) {
+                if (inventario[it->first].cantidad < it->second) {
+                    disponible = false;
+                    break;
+                }
+            }
+            if (disponible)
+                cout << p.nombre << endl;
+        }
+    }
+
+    void menu() {
+        int opc;
+        do {
+            cout << "\n--- MENU ADMINISTRADOR ---\n";
+            cout << "1. Agregar ingrediente\n2. Actualizar ingrediente\n3. Agregar plato\n4. Reporte de Ventas\n5. Reportes de Inventario\n6. Salir\nOpción: ";
+            cin >> opc;
+            cin.ignore();
+            if (opc == 1) {
+                string n; double c, m, p;
+                cout << "Nombre: "; getline(cin, n);
+                cout << "Cantidad: "; cin >> c;
+                cout << "Mínimo: "; cin >> m;
+                cout << "Precio: "; cin >> p;
+                agregarIngrediente(n, c, m, p);
+            } else if (opc == 2) {
+                string n; double c, p;
+                cout << "Nombre: "; getline(cin, n);
+                cout << "Cantidad: "; cin >> c;
+                cout << "Precio: "; cin >> p;
+                actualizarIngrediente(n, c, p);
+            } else if (opc == 3) {
+                string n, cat; double p; int num;
+                cout << "Nombre del plato: "; getline(cin, n);
+                cout << "Precio: "; cin >> p;
+                cin.ignore();
+                cout << "Categoría: "; getline(cin, cat);
+                cout << "Cantidad de ingredientes: "; cin >> num;
+                map<string, double> ing;
+                for (int i = 0; i < num; ++i) {
+                    string nom; double cant;
+                    cout << "Ingrediente " << (i + 1) << ": "; cin >> nom;
+                    cout << "Cantidad: "; cin >> cant;
+                    ing[nom] = cant;
+                }
+                agregarPlato(n, p, cat, ing);
+            } else if (opc == 4) {
+                reporteVentas();
+            } else if (opc == 5) {
+                reporteStock();
+                productosPorReponer();
+                platosDisponibles();
+            }
+        } while (opc != 6);
+    }
+};
+
+class Mozo : public Usuario {
+private:
+    vector<Pedido>& pedidos;
+public:
+    Mozo(string nombre, string dni, string celular, vector<Pedido>& pedidosRef)
+        : Usuario(nombre, dni, celular), pedidos(pedidosRef) {}
+
+    void actualizarDatos() {
+        cout << "Nuevo nombre: "; getline(cin, nombre);
+        cout << "Nuevo DNI: "; getline(cin, dni);
+        cout << "Nuevo celular: "; getline(cin, celular);
+    }
+
+    void tomarPedido() {
+        Pedido p;
+        p.mozo = nombre;
+        cout << "Entrada: "; getline(cin, p.entrada);
+        cout << "Plato de fondo: "; getline(cin, p.fondo);
+        cout << "Bebida: "; getline(cin, p.bebida);
+        cout << "Postre: "; getline(cin, p.postre);
+        cout << "Tipo (mesa/delivery): "; getline(cin, p.tipo);
+        pedidos.push_back(p);
+    }
+
+    void menu() {
+        int opc;
+        do {
+            cout << "\n--- MENU MOZO ---\n";
+            cout << "1. Actualizar datos\n2. Tomar pedido\n3. Salir\nOpción: ";
+            cin >> opc;
+            cin.ignore();
+            if (opc == 1) actualizarDatos();
+            else if (opc == 2) tomarPedido();
+        } while (opc != 3);
+    }
+};
+
+int main() {
+    vector<Pedido> pedidos;
+    Administrador admin("admin", "00000000", "000000000");
+    vector<Usuario*> usuarios;
+
+    int opc;
+    do {
+        cout << "\n--- GESTOR DE INVENTARIO ---\n";
+        cout << "1. Iniciar sesión\n2. Salir\nOpción: ";
+        cin >> opc;
+        cin.ignore();
+        if (opc == 1) {
+            string nombre, dni, cel, tipo;
+            cout << "Nombre: "; getline(cin, nombre);
+            cout << "DNI: "; getline(cin, dni);
+            cout << "Celular: "; getline(cin, cel);
+            cout << "Tipo (mozo/admin): "; getline(cin, tipo);
+            Usuario* u = nullptr;
+            if (tipo == "mozo") {
+                u = new Mozo(nombre, dni, cel, pedidos);
+            } else if (tipo == "admin") {
+                u = &admin;
+            }
+            if (u) u->menu();
+        }
+    } while (opc != 2);
+
+    return 0;
+}
