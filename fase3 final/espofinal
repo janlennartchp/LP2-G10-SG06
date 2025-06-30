@@ -1,0 +1,666 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <fstream>
+#include <sstream>
+#include <limits>
+#include <algorithm>
+using namespace std;
+
+class Ingrediente {
+public:
+    string nombre;
+    int cantidad;
+    int minimo;
+    float precio;
+    Ingrediente(string n, int c, int m, float p) : nombre(n), cantidad(c), minimo(m), precio(p) {}
+};
+
+class Plato {
+public:
+    string nombre;
+    float precio;
+    string categoria;
+    map<string, int> ingredientes;
+    Plato(string n, float p, string cat) : nombre(n), precio(p), categoria(cat) {}
+};
+
+class Pedido {
+public:
+    string mozo, tipo, entrada, fondo, bebida, postre;
+};
+
+vector<Ingrediente> inventario;
+vector<Plato> platos;
+vector<Pedido> pedidos;
+map<string, string> usuarios;
+map<string, string> roles;
+
+void cargarUsuarios() {
+    ifstream file("usuarios.txt");
+    if (!file.is_open()) return;
+    
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string dni, nombre, rol;
+        getline(ss, dni, ','); 
+        getline(ss, nombre, ','); 
+        getline(ss, rol);
+        usuarios[dni] = nombre;
+        roles[dni] = rol;
+    }
+    file.close();
+}
+
+void guardarUsuarios() {
+    ofstream file("usuarios.txt");
+    for (auto& u : usuarios)
+        file << u.first << "," << u.second << "," << roles[u.first] << endl;
+    file.close();
+}
+
+void actualizarMozo(string dni) {
+    cout << "\n--- ACTUALIZAR DATOS DE MOZO ---\n";
+    string nombre;
+    cout << "Nuevo nombre: "; 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, nombre);
+    usuarios[dni] = nombre;
+    guardarUsuarios();
+    cout << "✅ Datos actualizados.\n";
+}
+
+void cargarIngredientes() {
+    ifstream file("ingredientes.txt");
+    if (!file.is_open()) return;
+    
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string nombre, cantStr, minStr, precStr;
+        getline(ss, nombre, ','); 
+        getline(ss, cantStr, ',');
+        getline(ss, minStr, ',');
+        getline(ss, precStr);
+        
+        int cantidad = stoi(cantStr);
+        int minimo = stoi(minStr);
+        float precio = stof(precStr);
+        
+        inventario.emplace_back(nombre, cantidad, minimo, precio);
+    }
+    file.close();
+}
+
+void guardarIngredientes() {
+    ofstream file("ingredientes.txt");
+    for (auto& i : inventario)
+        file << i.nombre << "," << i.cantidad << "," << i.minimo << "," << i.precio << endl;
+    file.close();
+}
+
+void cargarPlatos() {
+    ifstream file("platos.txt");
+    if (!file.is_open()) return;
+    
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string nombre, precStr, categoria, ingLine;
+        getline(ss, nombre, ',');
+        getline(ss, precStr, ',');
+        getline(ss, categoria, '|');
+        
+        float precio = stof(precStr);
+        Plato plato(nombre, precio, categoria);
+        
+        // Leer ingredientes
+        while (getline(ss, ingLine, ';')) {
+            if (ingLine.empty()) continue;
+            stringstream ingSS(ingLine);
+            string ingNombre, cantStr;
+            getline(ingSS, ingNombre, ':');
+            getline(ingSS, cantStr);
+            plato.ingredientes[ingNombre] = stoi(cantStr);
+        }
+        platos.push_back(plato);
+    }
+    file.close();
+}
+
+void guardarPlatos() {
+    ofstream file("platos.txt");
+    for (auto& p : platos) {
+        file << p.nombre << "," << p.precio << "," << p.categoria << "|";
+        for (auto& ing : p.ingredientes) {
+            file << ing.first << ":" << ing.second << ";";
+        }
+        file << endl;
+    }
+    file.close();
+}
+
+void cargarPedidos() {
+    ifstream file("pedidos.txt");
+    if (!file.is_open()) return;
+    
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string mozo, tipo, entrada, fondo, bebida, postre;
+        getline(ss, mozo, ',');
+        getline(ss, tipo, ',');
+        getline(ss, entrada, ',');
+        getline(ss, fondo, ',');
+        getline(ss, bebida, ',');
+        getline(ss, postre);
+        
+        Pedido p;
+        p.mozo = mozo;
+        p.tipo = tipo;
+        p.entrada = entrada;
+        p.fondo = fondo;
+        p.bebida = bebida;
+        p.postre = postre;
+        
+        pedidos.push_back(p);
+    }
+    file.close();
+}
+
+bool verificarYDescontarIngredientes(const Plato& plato) {
+    // Primera pasada: Verificar
+    for (auto& ing : plato.ingredientes) {
+        auto it = find_if(inventario.begin(), inventario.end(), [&](Ingrediente& i) {
+            return i.nombre == ing.first && i.cantidad >= ing.second;
+        });
+        if (it == inventario.end()) {
+            cout << "❌ No hay suficiente " << ing.first << " para preparar " << plato.nombre << endl;
+            return false;
+        }
+    }
+    
+    // Segunda pasada: Descontar
+    for (auto& ing : plato.ingredientes) {
+        for (auto& i : inventario) {
+            if (i.nombre == ing.first) {
+                i.cantidad -= ing.second;
+                if (i.cantidad < i.minimo) {
+                    cout << "⚠️ Advertencia: " << i.nombre << " ha bajado del stock mínimo (" << i.minimo << ")\n";
+                }
+                break;
+            }
+        }
+    }
+    guardarIngredientes();
+    return true;
+}
+
+Plato* buscarPlatoPorNombre(const string& nombre) {
+    for (auto& p : platos) {
+        if (p.nombre == nombre) {
+            return &p;
+        }
+    }
+    return nullptr;
+}
+
+string seleccionarPlatoOpcional(const string& categoria) {
+    vector<Plato*> opciones;
+    for (auto& p : platos) {
+        if (p.categoria == categoria) {
+            opciones.push_back(&p);
+        }
+    }
+    
+    if (opciones.empty()) {
+        cout << "No hay platos disponibles en esta categoría.\n";
+        return "";
+    }
+    
+    cout << "\nSeleccione " << categoria << " (0 para omitir):\n";
+    for (size_t i = 0; i < opciones.size(); ++i) {
+        cout << i+1 << ". " << opciones[i]->nombre << " - S/" << opciones[i]->precio << endl;
+    }
+    
+    int eleccion;
+    while (true) {
+        cout << "Opción: ";
+        cin >> eleccion;
+        if (cin.fail() || eleccion < 0 || eleccion > (int)opciones.size()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Opción inválida. Intente nuevamente.\n";
+        } else {
+            break;
+        }
+    }
+    
+    if (eleccion == 0) return "";
+    
+    Plato* elegido = opciones[eleccion - 1];
+    if (!verificarYDescontarIngredientes(*elegido)) {
+        return seleccionarPlatoOpcional(categoria);
+    }
+    return elegido->nombre;
+}
+
+// Nuevas funciones para administrador
+void agregarIngrediente() {
+    cout << "\n--- AGREGAR INGREDIENTE ---\n";
+    string nombre;
+    int cantidad, minimo;
+    float precio;
+    
+    cout << "Nombre: ";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, nombre);
+    
+    auto it = find_if(inventario.begin(), inventario.end(), 
+                     [&](const Ingrediente& i) { return i.nombre == nombre; });
+    if (it != inventario.end()) {
+        cout << "⚠️ Este ingrediente ya existe en el inventario.\n";
+        return;
+    }
+    
+    cout << "Cantidad: ";
+    cin >> cantidad;
+    cout << "Mínimo requerido: ";
+    cin >> minimo;
+    cout << "Precio unitario: ";
+    cin >> precio;
+    
+    inventario.emplace_back(nombre, cantidad, minimo, precio);
+    guardarIngredientes();
+    cout << "✅ Ingrediente agregado correctamente.\n";
+}
+
+void modificarIngrediente() {
+    cout << "\n--- MODIFICAR INGREDIENTE ---\n";
+    if (inventario.empty()) {
+        cout << "No hay ingredientes registrados.\n";
+        return;
+    }
+    
+    cout << "Ingredientes disponibles:\n";
+    for (size_t i = 0; i < inventario.size(); ++i) {
+        cout << i+1 << ". " << inventario[i].nombre << " (Stock: " << inventario[i].cantidad 
+             << ", Mín: " << inventario[i].minimo << ", Precio: S/" << inventario[i].precio << ")\n";
+    }
+    
+    cout << "Seleccione el número de ingrediente a modificar (0 para cancelar): ";
+    int opcion;
+    cin >> opcion;
+    
+    if (opcion < 1 || opcion > (int)inventario.size()) {
+        cout << "Operación cancelada.\n";
+        return;
+    }
+    
+    Ingrediente& ing = inventario[opcion-1];
+    cout << "\nEditando: " << ing.nombre << endl;
+    
+    cout << "Nueva cantidad (" << ing.cantidad << "): ";
+    string input;
+    cin.ignore();
+    getline(cin, input);
+    if (!input.empty()) ing.cantidad = stoi(input);
+    
+    cout << "Nuevo mínimo (" << ing.minimo << "): ";
+    getline(cin, input);
+    if (!input.empty()) ing.minimo = stoi(input);
+    
+    cout << "Nuevo precio (" << ing.precio << "): ";
+    getline(cin, input);
+    if (!input.empty()) ing.precio = stof(input);
+    
+    guardarIngredientes();
+    cout << "✅ Ingrediente actualizado correctamente.\n";
+}
+
+void agregarPlato() {
+    cout << "\n--- AGREGAR NUEVO PLATO ---\n";
+    string nombre, categoria;
+    float precio;
+    
+    cout << "Nombre del plato: ";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, nombre);
+    
+    cout << "Categoría (entrada/fondo/bebida/postre): ";
+    getline(cin, categoria);
+    
+    cout << "Precio: ";
+    cin >> precio;
+    
+    Plato nuevo(nombre, precio, categoria);
+    
+    cout << "\nAgregar ingredientes:\n";
+    while (true) {
+        if (inventario.empty()) {
+            cout << "No hay ingredientes registrados. No se pueden agregar más.\n";
+            break;
+        }
+        
+        cout << "\nIngredientes disponibles:\n";
+        for (size_t i = 0; i < inventario.size(); ++i) {
+            cout << i+1 << ". " << inventario[i].nombre << " (Cant: " << inventario[i].cantidad << ")\n";
+        }
+        
+        cout << "\nSeleccione ingrediente (0 para terminar): ";
+        int opcion;
+        cin >> opcion;
+        
+        if (opcion < 1 || opcion > (int)inventario.size()) break;
+        
+        cout << "Cantidad necesaria de " << inventario[opcion-1].nombre << ": ";
+        int cantidad;
+        cin >> cantidad;
+        
+        nuevo.ingredientes[inventario[opcion-1].nombre] = cantidad;
+    }
+    
+    platos.push_back(nuevo);
+    guardarPlatos();
+    cout << "✅ Plato agregado correctamente.\n";
+}
+
+void generarReporteVentas() {
+    cout << "\n--- REPORTE DE VENTAS ---\n";
+    
+    if (pedidos.empty()) {
+        cout << "No hay pedidos registrados.\n";
+        return;
+    }
+    
+    // Ventas por plato
+    map<string, int> ventasPlato;
+    map<string, float> ingresoPlato;
+    // Ventas por mozo
+    map<string, int> ventasMozo;
+    // Ventas por tipo
+    map<string, int> ventasTipo;
+    
+    for (const auto& pedido : pedidos) {
+        if (!pedido.entrada.empty()) {
+            ventasPlato[pedido.entrada]++;
+            Plato* p = buscarPlatoPorNombre(pedido.entrada);
+            if (p) ingresoPlato[pedido.entrada] += p->precio;
+        }
+        if (!pedido.fondo.empty()) {
+            ventasPlato[pedido.fondo]++;
+            Plato* p = buscarPlatoPorNombre(pedido.fondo);
+            if (p) ingresoPlato[pedido.fondo] += p->precio;
+        }
+        if (!pedido.bebida.empty()) {
+            ventasPlato[pedido.bebida]++;
+            Plato* p = buscarPlatoPorNombre(pedido.bebida);
+            if (p) ingresoPlato[pedido.bebida] += p->precio;
+        }
+        if (!pedido.postre.empty()) {
+            ventasPlato[pedido.postre]++;
+            Plato* p = buscarPlatoPorNombre(pedido.postre);
+            if (p) ingresoPlato[pedido.postre] += p->precio;
+        }
+        
+        ventasMozo[pedido.mozo]++;
+        ventasTipo[pedido.tipo]++;
+    }
+    
+    cout << "\nVENTAS POR PLATO:\n";
+    for (const auto& vp : ventasPlato) {
+        cout << vp.first << ": " << vp.second << " ventas (S/" << ingresoPlato[vp.first] << ")\n";
+    }
+    
+    cout << "\nVENTAS POR MOZO:\n";
+    for (const auto& vm : ventasMozo) {
+        cout << vm.first << ": " << vm.second << " pedidos atendidos\n";
+    }
+    
+    cout << "\nVENTAS POR TIPO:\n";
+    for (const auto& vt : ventasTipo) {
+        cout << vt.first << ": " << vt.second << " pedidos\n";
+    }
+}
+
+void generarReporteInventario() {
+    cout << "\n--- REPORTE DE INVENTARIO ---\n";
+    
+    // Stock actual
+    cout << "\nSTOCK ACTUAL:\n";
+    for (const auto& ing : inventario) {
+        cout << ing.nombre << ": " << ing.cantidad << " (mínimo " << ing.minimo << ")\n";
+    }
+    
+    // Productos por reponer
+    cout << "\nPRODUCTOS POR REPONER:\n";
+    bool necesitaReponer = false;
+    for (const auto& ing : inventario) {
+        if (ing.cantidad < ing.minimo) {
+            cout << ing.nombre << ": " << ing.cantidad << "/" << ing.minimo << endl;
+            necesitaReponer = true;
+        }
+    }
+    if (!necesitaReponer) {
+        cout << "Todo el stock está en orden\n";
+    }
+    
+    // Platos disponibles
+    cout << "\nPLATOS DISPONIBLES:\n";
+    if (platos.empty()) {
+        cout << "No hay platos registrados\n";
+        return;
+    }
+    
+    for (const auto& plato : platos) {
+        bool disponible = true;
+        for (const auto& ing : plato.ingredientes) {
+            auto it = find_if(inventario.begin(), inventario.end(), 
+                            [&](const Ingrediente& i) { return i.nombre == ing.first; });
+            if (it == inventario.end() || it->cantidad < ing.second) {
+                disponible = false;
+                break;
+            }
+        }
+        cout << plato.nombre << ": " << (disponible ? "✅ Disponible" : "❌ No disponible") << endl;
+    }
+}
+
+void menuAdministrador(string dni) {
+    int opcion;
+    do {
+        cout << "\n--- MENÚ ADMINISTRADOR ---\n";
+        cout << "1. Gestionar Inventario\n";
+        cout << "2. Agregar Plato\n";
+        cout << "3. Reporte de Ventas\n";
+        cout << "4. Reporte de Inventario\n";
+        cout << "5. Ver Ingredientes\n";
+        cout << "6. Ver Platos\n";
+        cout << "7. Ver Pedidos\n";
+        cout << "8. Salir\n";
+        cout << "Opción: ";
+        cin >> opcion;
+        
+        switch (opcion) {
+            case 1: {
+                int subopcion;
+                do {
+                    cout << "\nGESTIONAR INVENTARIO:\n";
+                    cout << "1. Agregar Ingrediente\n";
+                    cout << "2. Modificar Ingrediente\n";
+                    cout << "3. Volver\n";
+                    cout << "Opción: ";
+                    cin >> subopcion;
+                    
+                    if (subopcion == 1) agregarIngrediente();
+                    else if (subopcion == 2) modificarIngrediente();
+                } while (subopcion != 3);
+                break;
+            }
+            case 2:
+                agregarPlato();
+                break;
+            case 3:
+                generarReporteVentas();
+                break;
+            case 4:
+                generarReporteInventario();
+                break;
+            case 5:
+                cout << "\nLISTA DE INGREDIENTES:\n";
+                for (const auto& ing : inventario) {
+                    cout << ing.nombre << ": " << ing.cantidad << " (mín " << ing.minimo 
+                         << "), S/" << ing.precio << " c/u\n";
+                }
+                break;
+            case 6:
+                cout << "\nLISTA DE PLATOS:\n";
+                for (const auto& p : platos) {
+                    cout << p.nombre << " (" << p.categoria << "): S/" << p.precio << endl;
+                    cout << "Ingredientes: ";
+                    for (const auto& ing : p.ingredientes) {
+                        cout << ing.first << "(" << ing.second << "), ";
+                    }
+                    cout << endl;
+                }
+                break;
+            case 7:
+                cout << "\nHISTORIAL DE PEDIDOS:\n";
+                for (const auto& p : pedidos) {
+                    cout << "Mozo: " << p.mozo << ", Tipo: " << p.tipo << " | ";
+                    cout << "Entrada: " << (p.entrada.empty() ? "-" : p.entrada) << ", ";
+                    cout << "Fondo: " << (p.fondo.empty() ? "-" : p.fondo) << ", ";
+                    cout << "Bebida: " << (p.bebida.empty() ? "-" : p.bebida) << ", ";
+                    cout << "Postre: " << (p.postre.empty() ? "-" : p.postre) << endl;
+                }
+                break;
+        }
+    } while (opcion != 8);
+}
+
+void tomarPedido(string dni) {
+    cout << "\n--- TOMAR PEDIDO ---\n";
+    Pedido nuevo;
+    nuevo.mozo = usuarios[dni];
+    
+    // Seleccionar tipo de pedido
+    while (true) {
+        cout << "\nTipo de pedido:\n1. Mesa\n2. Delivery\nOpción: ";
+        int tipo;
+        cin >> tipo;
+        if (tipo == 1) {
+            nuevo.tipo = "mesa";
+            break;
+        } else if (tipo == 2) {
+            nuevo.tipo = "delivery";
+            break;
+        } else {
+            cout << "Opción inválida\n";
+        }
+    }
+    
+    // Seleccionar platos
+    cout << "\nSELECCIÓN DE PLATOS:\n";
+    nuevo.entrada = seleccionarPlatoOpcional("entrada");
+    nuevo.fondo = seleccionarPlatoOpcional("fondo");
+    nuevo.bebida = seleccionarPlatoOpcional("bebida");
+    nuevo.postre = seleccionarPlatoOpcional("postre");
+    
+    // Guardar pedido
+    pedidos.push_back(nuevo);
+    ofstream file("pedidos.txt", ios::app);
+    file << nuevo.mozo << "," << nuevo.tipo << "," << nuevo.entrada << "," 
+         << nuevo.fondo << "," << nuevo.bebida << "," << nuevo.postre << endl;
+    file.close();
+    cout << "\n✅ Pedido registrado correctamente\n";
+}
+
+void menuMozo(string dni) {
+    int opcion;
+    do {
+        cout << "\n--- MENÚ MOZO ---\n";
+        cout << "1. Tomar Pedido\n";
+        cout << "2. Actualizar mis datos\n";
+        cout << "3. Salir\n";
+        cout << "Opción: ";
+        cin >> opcion;
+        
+        if (opcion == 1) tomarPedido(dni);
+        else if (opcion == 2) actualizarMozo(dni);
+    } while (opcion != 3);
+}
+
+void registrarUsuario() {
+    cout << "\n--- REGISTRAR NUEVO USUARIO ---\n";
+    string dni, nombre, rol;
+    
+    cout << "DNI: ";
+    cin >> dni;
+    if (usuarios.count(dni)) {
+        cout << "⚠️ Ya existe un usuario con este DNI\n";
+        return;
+    }
+    
+    cout << "Nombre completo: ";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, nombre);
+    
+    cout << "Rol (admin/mozo): ";
+    getline(cin, rol);
+    
+    if (rol != "admin" && rol != "mozo") {
+        cout << "⚠️ Rol inválido. Debe ser 'admin' o 'mozo'\n";
+        return;
+    }
+    
+    usuarios[dni] = nombre;
+    roles[dni] = rol;
+    guardarUsuarios();
+    cout << "✅ Usuario registrado correctamente\n";
+}
+
+void mainMenu() {
+    cargarUsuarios();
+    cargarIngredientes();
+    cargarPlatos();
+    cargarPedidos();
+    
+    int opcion;
+    do {
+        cout << "\n--- SISTEMA DE RESTAURANTE ---\n";
+        cout << "1. Registrar nuevo usuario\n";
+        cout << "2. Iniciar sesión como mozo\n";
+        cout << "3. Iniciar sesión como administrador\n";
+        cout << "4. Salir\n";
+        cout << "Opción: ";
+        cin >> opcion;
+        
+        if (opcion == 1) {
+            registrarUsuario();
+        } else if (opcion == 2 || opcion == 3) {
+            string dni;
+            cout << "Ingrese su DNI: ";
+            cin >> dni;
+            
+            if (!usuarios.count(dni)) {
+                cout << "⚠️ Usuario no registrado\n";
+                continue;
+            }
+            
+            string rolEsperado = (opcion == 2) ? "mozo" : "admin";
+            if (roles[dni] != rolEsperado) {
+                cout << "⚠️ No tiene permisos para esta sección\n";
+                continue;
+            }
+            
+            if (opcion == 2) menuMozo(dni);
+            else menuAdministrador(dni);
+        }
+    } while (opcion != 4);
+}
+
+int main() {
+    mainMenu();
+    return 0;
+}
